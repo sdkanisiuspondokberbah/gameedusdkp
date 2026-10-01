@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Froggy Jumps: Belajar & Bermain</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;900&display=swap');
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #87CEEB; /* Sky blue */
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            touch-action: none; /* Prevent default touch actions like scrolling */
+        }
+
+        h1, h2, h3, .fredoka {
+            font-family: 'Fredoka One', cursive;
+        }
+
+        /* Screen Management */
+        .screen {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .screen.active {
+            display: flex;
+        }
+
+        /* --- Animations --- */
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
+            40% {transform: translateY(-30px);}
+            60% {transform: translateY(-15px);}
+        }
+        
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+
+        @keyframes pop {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100vw); }
+            to { transform: translateX(0); }
+        }
+
+        @keyframes rainFall {
+            0% { transform: translateY(-10vh); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(110vh); opacity: 0; }
+        }
+
+        .animate-bounce-custom { animation: bounce 2s infinite; }
+        .animate-float { animation: float 3s ease-in-out infinite; }
+        .animate-pop { animation: pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        .animate-slide-in { animation: slideIn 0.5s ease-out forwards; }
+
+        /* --- Typography & Elements --- */
+        .btn {
+            background: linear-gradient(to bottom, #4CAF50, #2E8B57);
+            color: white;
+            border: 4px solid #fff;
+            border-radius: 9999px;
+            padding: 15px 30px;
+            font-size: 1.5rem;
+            font-family: 'Fredoka One', cursive;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #1e5c3a, 0 10px 10px rgba(0,0,0,0.3);
+            transition: transform 0.1s, box-shadow 0.1s;
+            text-align: center;
+        }
+        .btn:active {
+            transform: translateY(6px);
+            box-shadow: 0 0 0 #1e5c3a, 0 4px 4px rgba(0,0,0,0.3);
+        }
+        
+        .title-glow {
+            text-shadow: 0 0 10px rgba(255,255,255,0.8), 0 0 20px #fff, 0 0 30px #4CAF50;
+        }
+
+        /* --- Learning Stage Styles --- */
+        .learning-bg {
+            background: linear-gradient(135deg, #FFEFD5, #FFFACD);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+        
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .letter-display {
+            font-size: 8rem;
+            font-family: 'Fredoka One', cursive;
+            color: #FF5722;
+            text-shadow: 4px 4px 0 #fff, 8px 8px 0 rgba(0,0,0,0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .letter-display:hover {
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        .word-part {
+            display: inline-block;
+            margin: 0 5px;
+            padding: 10px 20px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 0 #ddd;
+            font-family: 'Fredoka One', cursive;
+            font-size: 3rem;
+            color: #3f51b5;
+            cursor: pointer;
+        }
+
+        .karaoke-word {
+            display: inline-block;
+            margin: 0 10px;
+            font-size: 2.5rem;
+            color: #555;
+            transition: color 0.3s, transform 0.3s;
+        }
+        .karaoke-word.active {
+            color: #E91E63;
+            transform: scale(1.2);
+            font-weight: bold;
+        }
+
+        /* --- Game Styles --- */
+        #gameCanvas {
+            background: linear-gradient(to bottom, #87CEEB, #E0F6FF);
+            display: block;
+            margin: 0 auto;
+            border-radius: 20px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        .game-ui-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Let clicks pass through to canvas if needed */
+        }
+        
+        .player-hud {
+            position: absolute;
+            background: rgba(255,255,255,0.9);
+            border: 3px solid #4CAF50;
+            border-radius: 15px;
+            padding: 10px 20px;
+            pointer-events: auto;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        #questionBox {
+            position: absolute;
+            top: 10%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            border: 4px solid #FFC107;
+            border-radius: 20px;
+            padding: 15px 30px;
+            text-align: center;
+            pointer-events: auto;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            z-index: 10;
+            min-width: 300px;
+        }
+
+        .rain-drop {
+            position: absolute;
+            width: 2px;
+            height: 15px;
+            background: rgba(255,255,255,0.6);
+            border-radius: 2px;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        /* Custom SVG Backgrounds */
+        .bg-clouds {
+            background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20,40 a10,10 0 0,1 20,0 a15,15 0 0,1 30,0 a10,10 0 0,1 20,0 q0,10 -10,10 h-50 q-10,0 -10,-10 z' fill='rgba(255,255,255,0.4)'/%3E%3C/svg%3E");
+            background-repeat: repeat-x;
+            background-position: center top 10%;
+            animation: moveClouds 20s linear infinite;
+        }
+        
+        @keyframes moveClouds {
+            from { background-position: 0% top 10%; }
+            to { background-position: 100vw top 10%; }
+        }
+
+        /* Character Box for Learning */
+        .helper-character {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 120px;
+            height: 120px;
+            background: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='50' cy='50' r='45' fill='%238BC34A'/%3E%3Ccircle cx='35' cy='40' r='10' fill='white'/%3E%3Ccircle cx='65' cy='40' r='10' fill='white'/%3E%3Ccircle cx='35' cy='40' r='3' fill='black'/%3E%3Ccircle cx='65' cy='40' r='3' fill='black'/%3E%3Cpath d='M 30 65 Q 50 80 70 65' stroke='darkgreen' stroke-width='5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat center center;
+            background-size: contain;
+            animation: float 2s ease-in-out infinite;
+        }
+
+        .speech-bubble {
+            position: absolute;
+            bottom: 120px;
+            left: 100px;
+            background: white;
+            border-radius: 20px;
+            padding: 15px 25px;
+            font-family: 'Fredoka One', cursive;
+            font-size: 1.2rem;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border: 3px solid #8BC34A;
+        }
+        .speech-bubble:after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 20%;
+            width: 0;
+            height: 0;
+            border: 20px solid transparent;
+            border-top-color: white;
+            border-bottom: 0;
+            border-left: 0;
+            margin-left: -10px;
+            margin-bottom: -20px;
+        }
+        .speech-bubble:before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 20%;
+            width: 0;
+            height: 0;
+            border: 23px solid transparent;
+            border-top-color: #8BC34A;
+            border-bottom: 0;
+            border-left: 0;
+            margin-left: -11px;
+            margin-bottom: -23px;
+            z-index: -1;
+        }
+
+    </style>
+</head>
+<body>
+
+
+    <!-- Screen 1: Splash Screen -->
+    <div id="screenSplash" class="screen active bg-clouds">
+        <div class="text-center animate-bounce-custom">
+            <h1 class="text-6xl text-white title-glow mb-4 fredoka">Froggy Jumps</h1>
+            <p class="text-2xl text-yellow-300 fredoka">Belajar Membaca & Yaumiyyatuna</p>
+        </div>
+        <!-- Froggy SVG -->
+        <div class="mt-8 animate-float">
+            <svg width="150" height="150" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <!-- Body -->
+                <ellipse cx="50" cy="60" rx="40" ry="35" fill="#4CAF50" />
+                <ellipse cx="50" cy="70" rx="30" ry="20" fill="#8BC34A" /> <!-- Belly -->
+                <!-- Eyes -->
+                <circle cx="30" cy="30" r="15" fill="#4CAF50" />
+                <circle cx="70" cy="30" r="15" fill="#4CAF50" />
+                <circle cx="30" cy="30" r="10" fill="white" />
+                <circle cx="70" cy="30" r="10" fill="white" />
+                <circle cx="30" cy="30" r="4" fill="black" />
+                <circle cx="70" cy="30" r="4" fill="black" />
+                <!-- Mouth -->
+                <path d="M 35 60 Q 50 70 65 60" stroke="#1b5e20" stroke-width="3" fill="none" stroke-linecap="round"/>
+                <!-- Legs -->
+                <path d="M 15 70 Q 5 90 20 95" stroke="#4CAF50" stroke-width="8" fill="none" stroke-linecap="round"/>
+                <path d="M 85 70 Q 95 90 80 95" stroke="#4CAF50" stroke-width="8" fill="none" stroke-linecap="round"/>
+            </svg>
+        </div>
+        <p class="mt-10 text-white font-bold animate-pulse">Ketuk untuk Memulai!</p>
+    </div>
+
+    <!-- Screen 2: Main Menu -->
+    <div id="screenMenu" class="screen bg-clouds">
+        <h1 class="text-5xl text-white title-glow mb-10 fredoka text-center">Menu Utama</h1>
+        <div class="flex flex-col gap-6 w-64">
+            <button class="btn" onclick="app.showScreen('screenLearning')">📚 Belajar Membaca</button>
+            <button class="btn bg-blue-500" onclick="app.showScreen('screenModeSelect')">🎮 Main Game</button>
+        </div>
+    </div>
+
+    <!-- Screen 3: Mode Selection (for game) -->
+    <div id="screenModeSelect" class="screen bg-clouds">
+        <h1 class="text-4xl text-white title-glow mb-8 fredoka text-center">Pilih Mode Permainan</h1>
+        <div class="flex flex-col md:flex-row gap-6">
+            <div class="bg-white/80 p-6 rounded-3xl border-4 border-green-500 flex flex-col items-center cursor-pointer hover:scale-105 transition-transform" onclick="app.startGame('solo')">
+                <span class="text-6xl mb-2">🧑</span>
+                <h2 class="text-2xl text-green-700 fredoka">Solo Mode</h2>
+                <p class="text-center font-bold text-gray-600">Main Sendiri</p>
+            </div>
+            <!-- Duel and Squad modes can be added here following the same structure, currently mocked -->
+            <div class="bg-white/50 p-6 rounded-3xl border-4 border-gray-400 flex flex-col items-center opacity-70">
+                <span class="text-6xl mb-2">🧑‍🤝‍🧑</span>
+                <h2 class="text-2xl text-gray-600 fredoka">Duel (Segera)</h2>
+                <p class="text-center font-bold text-gray-500">2 Pemain</p>
+            </div>
+        </div>
+        <button class="mt-8 text-white font-bold underline" onclick="app.showScreen('screenMenu')">Kembali</button>
+    </div>
+
+    <!-- Screen 4: Learning Stage (Belajar Membaca) -->
+    <div id="screenLearning" class="screen learning-bg">
+        <div class="w-full h-full p-4 flex flex-col relative">
+            <!-- Header Learning -->
+            <div class="flex justify-between items-center bg-white/80 p-4 rounded-2xl shadow-md z-10">
+                <h2 class="text-2xl text-purple-600 fredoka" id="learningTitle">Pengenalan Huruf</h2>
+                <div class="flex gap-2">
+                    <button class="bg-yellow-400 p-2 rounded-full shadow" onclick="app.learning.prevStep()">⬅️</button>
+                    <button class="bg-green-400 p-2 rounded-full shadow" onclick="app.learning.nextStep()">➡️</button>
+                </div>
+            </div>
+
+            <!-- Content Area -->
+            <div id="learningContent" class="flex-grow flex flex-col items-center justify-center text-center relative z-0">
+                <!-- Content injected via JS -->
+            </div>
+
+            <!-- Helper Character -->
+            <div class="helper-character"></div>
+            <div class="speech-bubble" id="helperSpeech">Halo! Yuk belajar bersama Froggy!</div>
+
+            <button class="absolute top-4 right-4 bg-red-500 text-white rounded-full w-10 h-10 font-bold shadow-lg" onclick="app.showScreen('screenMenu')">X</button>
+        </div>
+    </div>
+
+    <!-- Screen 5: Mini Quiz (Before Game) -->
+    <div id="screenMiniQuiz" class="screen learning-bg">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl border-4 border-blue-400 max-w-lg w-full text-center">
+            <h2 class="text-3xl text-blue-600 fredoka mb-6">Mini Quiz!</h2>
+            <p id="quizQuestion" class="text-2xl font-bold mb-6 text-gray-700">Tebak Kata:</p>
+            <div id="quizImage" class="text-6xl mb-6">🍎</div>
+            <div id="quizOptions" class="grid grid-cols-2 gap-4">
+                <!-- Buttons injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Screen 6: Main Game (Froggy Jumps) -->
+    <div id="screenGame" class="screen bg-gray-900">
+        <!-- Game Canvas container to maintain aspect ratio / fluid sizing -->
+        <div class="relative w-full h-full flex justify-center items-center overflow-hidden" id="gameContainer">
+            <canvas id="gameCanvas"></canvas>
+            
+            <!-- Game UI Overlay -->
+            <div class="game-ui-container">
+                <div class="player-hud top-4 left-4" id="hudPlayer1">
+                    <h3 class="text-xl fredoka text-green-700">Player 1</h3>
+                    <p class="font-bold text-gray-700">Skor: <span id="score1" class="text-2xl text-blue-600">0</span></p>
+                </div>
+                
+                <div id="questionBox" class="animate-pop" style="display: none;">
+                    <p class="text-xl font-bold text-gray-800 mb-2">Apa arti dari:</p>
+                    <h2 class="text-3xl fredoka text-blue-600 mb-4" id="gameQuestionText">أَسْتَيْقِظُ (Astayqizhu)</h2>
+                </div>
+
+                <!-- Rain Container -->
+                <div id="rainContainer" class="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden"></div>
+            </div>
+            
+            <!-- Touch Controls (Mobile) -->
+            <div class="absolute bottom-10 w-full flex justify-between px-10 pointer-events-auto sm:hidden">
+                <button class="bg-white/50 w-20 h-20 rounded-full text-4xl flex justify-center items-center active:bg-white/80" id="btnLeft">⬅️</button>
+                <button class="bg-white/50 w-20 h-20 rounded-full text-4xl flex justify-center items-center active:bg-white/80" id="btnRight">➡️</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Screen 7: Result -->
+    <div id="screenResult" class="screen bg-clouds">
+        <div class="bg-white p-10 rounded-3xl border-4 border-yellow-400 text-center animate-pop">
+            <h1 class="text-5xl fredoka text-orange-500 mb-4">Waktu Habis!</h1>
+            <p class="text-2xl font-bold text-gray-700 mb-2">Skor Akhir Kamu:</p>
+            <h2 class="text-6xl fredoka text-green-600 mb-8" id="finalScore">0</h2>
+            <div class="flex flex-col gap-4">
+                <button class="btn" onclick="app.startGame('solo')">Main Lagi</button>
+                <button class="btn bg-blue-500" onclick="app.showScreen('screenMenu')">Menu Utama</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA ---
+        
+        // 1. Yaumiyyatuna Vocabulary (Kegiatan Sehari-hari)
+        const vocabData = [
+            { a: "أَسْتَيْقِظُ", l: "Astayqizhu", i: "Saya bangun tidur", options: ["Saya mandi", "Saya tidur", "Saya bangun tidur", "Saya makan"] },
+            { a: "أَغْتَسِلُ", l: "Aghtasilu", i: "Saya mandi", options: ["Saya mandi", "Saya belajar", "Saya salat", "Saya pulang"] },
+            { a: "أُصَلِّي", l: "Ushalli", i: "Saya salat", options: ["Saya tidur", "Saya salat", "Saya makan", "Saya pergi"] },
+            { a: "أَفْطَرُ", l: "Uftiru", i: "Saya sarapan", options: ["Saya makan siang", "Saya sarapan", "Saya minum", "Saya tidur"] },
+            { a: "أَذْهَبُ", l: "Adhhabu", i: "Saya pergi", options: ["Saya pulang", "Saya pergi", "Saya duduk", "Saya baca"] },
+            { a: "أَدْرُسُ", l: "Adrusu", i: "Saya belajar", options: ["Saya menulis", "Saya bermain", "Saya belajar", "Saya mandi"] },
+            { a: "أَقْرَأُ", l: "Aqra'u", i: "Saya membaca", options: ["Saya menulis", "Saya membaca", "Saya berdiri", "Saya lari"] },
+            { a: "أَكْتُبُ", l: "Aktubu", i: "Saya menulis", options: ["Saya melihat", "Saya mendengar", "Saya menulis", "Saya baca"] },
+            { a: "أَنَامُ", l: "Anaamu", i: "Saya tidur", options: ["Saya tidur", "Saya bangun", "Saya duduk", "Saya makan"] },
+            { a: "أَلْعَبُ", l: "Al'abu", i: "Saya bermain", options: ["Saya belajar", "Saya bermain", "Saya mandi", "Saya pergi"] }
+        ];
+
+        // 2. Learning Stage Data (Belajar Membaca)
+        const learningData = {
+            letters: [
+                { char: 'A', color: '#F44336' }, { char: 'B', color: '#4CAF50' }, 
+                { char: 'C', color: '#2196F3' }, { char: 'D', color: '#FFEB3B' },
+                { char: 'E', color: '#9C27B0' }, { char: 'I', color: '#FF9800' },
+                { char: 'U', color: '#00BCD4' }, { char: 'O', color: '#E91E63' }
+            ],
+            syllables: ['ba', 'bi', 'bu', 'ca', 'ci', 'cu', 'da', 'di', 'du'],
+            words: [
+                { w: "BOLA", img: "⚽", syl: ["BO", "LA"] },
+                { w: "SAPI", img: "🐄", syl: ["SA", "PI"] },
+                { w: "BUKU", img: "📖", syl: ["BU", "KU"] }
+            ],
+            sentences: [
+                ["INI", "BUDI"],
+                ["BUDI", "BACA", "BUKU"],
+                ["SAYA", "SUKA", "MAIN"]
+            ]
+        };
+
+        // --- AUDIO SYSTEM (Synthesized via Web Speech API) ---
+        // We use synthesis to avoid external audio file dependencies
+        const audioSys = {
+            speak: function(text, lang = 'id-ID') {
+                if ('speechSynthesis' in window) {
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = lang;
+                    utterance.rate = 0.9;
+                    utterance.pitch = 1.1; // Slightly higher pitch for kids
+                    window.speechSynthesis.speak(utterance);
+                }
+            },
+            playEffect: function(type) {
+                // Simple synthesized sounds using AudioContext
+                try {
+                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    const osc = ctx.createOscillator();
+                    const gainNode = ctx.createGain();
+                    
+                    osc.connect(gainNode);
+                    gainNode.connect(ctx.destination);
+                    
+                    if (type === 'jump') {
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(400, ctx.currentTime);
+                        osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.1);
+                        gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+                        osc.start();
+                        osc.stop(ctx.currentTime + 0.1);
+                    } else if (type === 'coin') {
+                        osc.type = 'square';
+                        osc.frequency.setValueAtTime(800, ctx.currentTime);
+                        osc.frequency.setValueAtTime(1200, ctx.currentTime + 0.05);
+                        gainNode.gain.setValueAtTime(0.2, ctx.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+                        osc.start();
+                        osc.stop(ctx.currentTime + 0.1);
+                    } else if (type === 'splash') {
+                        // Noise burst for splash
+                        const bufferSize = ctx.sampleRate * 0.2; // 0.2 seconds
+                        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                        const data = buffer.getChannelData(0);
+                        for (let i = 0; i < bufferSize; i++) {
+                            data[i] = Math.random() * 2 - 1;
+                        }
+                        const noiseSource = ctx.createBufferSource();
+                        noiseSource.buffer = buffer;
+                        
+                        // Lowpass filter for splashy sound
+                        const filter = ctx.createBiquadFilter();
+                        filter.type = 'lowpass';
+                        filter.frequency.value = 1000;
+                        
+                        noiseSource.connect(filter);
+                        filter.connect(gainNode);
+                        
+                        gainNode.gain.setValueAtTime(0.5, ctx.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+                        
+                        noiseSource.start();
+                    }
+                } catch(e) {
+                    console.log("AudioContext not supported or blocked.");
+                }
+            }
+        };
+
+        // --- STREAMING_CHUNK:Implementing Application Controller... ---
+        const app = {
+            currentScreen: 'screenSplash',
+            init: function() {
+                // Splash screen logic
+                document.getElementById('screenSplash').addEventListener('click', () => {
+                    this.showScreen('screenMenu');
+                });
+                
+                // Initialize Learning Module
+                this.learning.init();
+            },
+            showScreen: function(screenId) {
+                document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+                document.getElementById(screenId).classList.add('active');
+                this.currentScreen = screenId;
+                
+                if (screenId === 'screenLearning') {
+                    this.learning.renderStep();
+                }
+            },
+            startGame: function(mode) {
+                this.showScreen('screenGame');
+                gameEngine.init(mode);
+            },
+            
+            // --- LEARNING MODULE ---
+            learning: {
+                stage: 0, // 0: Letters, 1: Syllables, 2: Words, 3: Sentences, 4: MiniQuiz
+                currentIdx: 0,
+                
+                init: function() {
+                    this.stage = 0;
+                    this.currentIdx = 0;
+                },
+                nextStep: function() {
+                    this.currentIdx++;
+                    this.renderStep();
+                },
+                prevStep: function() {
+                    if (this.currentIdx > 0) {
+                        this.currentIdx--;
+                        this.renderStep();
+                    }
+                },
+                setHelperText: function(text) {
+                    document.getElementById('helperSpeech').innerText = text;
+                    audioSys.speak(text);
+                },
+                
+                renderStep: function() {
+                    const contentDiv = document.getElementById('learningContent');
+                    contentDiv.innerHTML = ''; // Clear
+                    
+                    // Logic to transition between stages
+                    if (this.stage === 0) {
+                        document.getElementById('learningTitle').innerText = "Pengenalan Huruf";
+                        if (this.currentIdx >= learningData.letters.length) {
+                            this.stage = 1; this.currentIdx = 0; this.renderStep(); return;
+                        }
+                        const letter = learningData.letters[this.currentIdx];
+                        this.setHelperText(`Ini huruf ${letter.char}! Coba tekan!`);
+                        
+                        const el = document.createElement('div');
+                        el.className = 'letter-display animate-pop';
+                        el.style.color = letter.color;
+                        el.innerText = `${letter.char} ${letter.char.toLowerCase()}`;
+                        el.onclick = () => {
+                            audioSys.speak(letter.char);
+                            el.style.transform = 'scale(1.3)';
+                            setTimeout(() => el.style.transform = 'scale(1)', 300);
+                            app.createParticles(el, letter.color);
+                        };
+                        contentDiv.appendChild(el);
+                        
+                    } else if (this.stage === 1) {
+                        document.getElementById('learningTitle').innerText = "Suku Kata";
+                        if (this.currentIdx >= learningData.syllables.length) {
+                            this.stage = 2; this.currentIdx = 0; this.renderStep(); return;
+                        }
+                        const syl = learningData.syllables[this.currentIdx];
+                        this.setHelperText(`Ayo baca: ${syl.toUpperCase()}`);
+                        
+                        const el = document.createElement('div');
+                        el.className = 'word-part animate-bounce-custom';
+                        el.innerText = syl.toUpperCase();
+                        el.onclick = () => {
+                            audioSys.speak(syl);
+                            app.createParticles(el, '#4CAF50');
+                        };
+                        contentDiv.appendChild(el);
+                        
+                    } else if (this.stage === 2) {
+                         document.getElementById('learningTitle').innerText = "Membaca Kata";
+                         if (this.currentIdx >= learningData.words.length) {
+                            this.stage = 3; this.currentIdx = 0; this.renderStep(); return;
+                        }
+                        const wordObj = learningData.words[this.currentIdx];
+                        this.setHelperText(`Ini gambar apa? Benar, ${wordObj.w}!`);
+                        
+                        const imgEl = document.createElement('div');
+                        imgEl.style.fontSize = '6rem';
+                        imgEl.className = 'animate-float';
+                        imgEl.innerText = wordObj.img;
+                        contentDiv.appendChild(imgEl);
+                        
+                        const wordContainer = document.createElement('div');
+                        wordContainer.className = 'mt-4 flex gap-2';
+                        wordObj.syl.forEach((s, i) => {
+                            const p = document.createElement('div');
+                            p.className = 'word-part opacity-0';
+                            p.innerText = s;
+                            wordContainer.appendChild(p);
+                            
+                            // Animate in sequence
+                            setTimeout(() => {
+                                p.classList.remove('opacity-0');
+                                p.classList.add('animate-pop');
+                                if(i === wordObj.syl.length-1) {
+                                    setTimeout(() => audioSys.speak(wordObj.w), 500);
+                                }
+                            }, i * 1000 + 500);
+                        });
+                        contentDiv.appendChild(wordContainer);
+                        
+                    } else if (this.stage === 3) {
+                        document.getElementById('learningTitle').innerText = "Membaca Kalimat";
+                        if (this.currentIdx >= learningData.sentences.length) {
+                            // Finish learning, go to quiz
+                            app.showScreen('screenMiniQuiz');
+                            app.quiz.init();
+                            return;
+                        }
+                        const sentence = learningData.sentences[this.currentIdx];
+                        this.setHelperText(`Mari baca bersama-sama!`);
+                        
+                        const container = document.createElement('div');
+                        container.className = 'flex flex-wrap justify-center p-4 bg-white/50 rounded-2xl';
+                        
+                        sentence.forEach((word, i) => {
+                            const w = document.createElement('span');
+                            w.className = 'karaoke-word';
+                            w.innerText = word;
+                            container.appendChild(w);
+                            
+                            // Karaoke effect
+                            setTimeout(() => {
+                                document.querySelectorAll('.karaoke-word').forEach(el => el.classList.remove('active'));
+                                w.classList.add('active');
+                                audioSys.speak(word);
+                            }, i * 1500 + 1000);
+                        });
+                        
+                        contentDiv.appendChild(container);
+                    }
+                }
+            },
+            
+            // --- MINI QUIZ MODULE ---
+            quiz: {
+                currentQ: 0,
+                questions: [
+                    { q: "Tebak Kata:", img: "⚽", ans: "BOLA", options: ["SAPI", "BOLA", "BUKU", "MEJA"] },
+                    { q: "Pilih Bahasa Arabnya 'Saya Bangun Tidur'", img: "🥱", ans: "Astayqizhu", options: ["Ushalli", "Astayqizhu", "Aqra'u", "Anaamu"] }
+                ],
+                init: function() {
+                    this.currentQ = 0;
+                    this.renderQ();
+                },
+                renderQ: function() {
+                    if (this.currentQ >= this.questions.length) {
+                        // Finish quiz, go to game
+                        app.startGame('solo');
+                        return;
+                    }
+                    const qData = this.questions[this.currentQ];
+                    document.getElementById('quizQuestion').innerText = qData.q;
+                    document.getElementById('quizImage').innerText = qData.img;
+                    
+                    const optsDiv = document.getElementById('quizOptions');
+                    optsDiv.innerHTML = '';
+                    
+                    // Shuffle options
+                    const shuffledOpts = [...qData.options].sort(() => Math.random() - 0.5);
+                    
+                    shuffledOpts.forEach(opt => {
+                        const btn = document.createElement('button');
+                        btn.className = 'btn text-xl p-4 m-2 bg-blue-500 w-full';
+                        btn.innerText = opt;
+                        btn.onclick = () => {
+                            if (opt === qData.ans) {
+                                btn.classList.replace('bg-blue-500', 'bg-green-500');
+                                audioSys.playEffect('coin');
+                                setTimeout(() => { this.currentQ++; this.renderQ(); }, 1000);
+                            } else {
+                                btn.classList.replace('bg-blue-500', 'bg-red-500');
+                                btn.classList.add('animate-shake'); // Assuming shake class exists or is simple visual feedback
+                                audioSys.speak("Coba lagi");
+                                setTimeout(() => btn.classList.replace('bg-red-500', 'bg-blue-500'), 1000);
+                            }
+                        };
+                        optsDiv.appendChild(btn);
+                    });
+                }
+            },
+
+            // Helper for visual effects
+            createParticles: function(element, color) {
+                const rect = element.getBoundingClientRect();
+                for (let i = 0; i < 5; i++) {
+                    const p = document.createElement('div');
+                    p.style.position = 'absolute';
+                    p.style.left = rect.left + rect.width/2 + 'px';
+                    p.style.top = rect.top + rect.height/2 + 'px';
+                    p.style.width = '10px';
+                    p.style.height = '10px';
+                    p.style.backgroundColor = color;
+                    p.style.borderRadius = '50%';
+                    p.style.zIndex = 1000;
+                    p.style.pointerEvents = 'none';
+                    document.body.appendChild(p);
+                    
+                    const angle = Math.random() * Math.PI * 2;
+                    const velocity = 5 + Math.random() * 5;
+                    const vx = Math.cos(angle) * velocity;
+                    const vy = Math.sin(angle) * velocity;
+                    
+                    let frame = 0;
+                    const anim = setInterval(() => {
+                        frame++;
+                        const currentX = parseFloat(p.style.left);
+                        const currentY = parseFloat(p.style.top);
+                        p.style.left = (currentX + vx) + 'px';
+                        p.style.top = (currentY + vy + (frame * 0.2)) + 'px'; // gravity
+                        p.style.opacity = 1 - (frame / 30);
+                        
+                        if (frame > 30) {
+                            clearInterval(anim);
+                            p.remove();
+                        }
+                    }, 16);
+                }
+            }
+        };
+
+        // --- STREAMING_CHUNK:Implementing Game Engine Logic (Froggy Jumps)... ---
+        const gameEngine = {
+            canvas: null,
+            ctx: null,
+            width: 0,
+            height: 0,
+            loopId: null,
+            state: 'playing', // playing, answering, result, falling
+            score: 0,
+            cameraY: 0,
+            
+            player: { x: 0, y: 0, width: 40, height: 40, vx: 0, vy: 0, speed: 5, jumpPower: -12, isGrounded: false, emoji: "🐸" },
+            platforms: [],
+            enemies: [], // Simple goombas
+            currentQuestion: null,
+            questionPlatforms: [], // Platforms representing answers
+            
+            keys: { left: false, right: false },
+            
+            init: function(mode) {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+                
+                this.resetGame();
+                this.setupControls();
+                
+                this.loopId = requestAnimationFrame(() => this.gameLoop());
+                
+                // Set initial question
+                this.generateQuestion();
+            },
+            
+            resizeCanvas: function() {
+                const container = document.getElementById('gameContainer');
+                // Make canvas fill container, but keep a logical internal resolution if needed, 
+                // here we just use actual size for fluid layout
+                this.width = container.clientWidth;
+                this.height = container.clientHeight;
+                this.canvas.width = this.width;
+                this.canvas.height = this.height;
+            },
+            
+            resetGame: function() {
+                this.score = 0;
+                document.getElementById('score1').innerText = this.score;
+                this.state = 'playing';
+                this.cameraY = 0;
+                
+                this.player.x = this.width / 2;
+                this.player.y = this.height - 100;
+                this.player.vy = 0;
+                
+                this.platforms = [
+                    { x: 0, y: this.height - 20, width: this.width, height: 20, type: 'ground' }
+                ];
+                
+                // Add some initial platforms
+                for(let i=1; i<5; i++) {
+                    this.platforms.push({
+                        x: Math.random() * (this.width - 100),
+                        y: this.height - (i * 150),
+                        width: 100, height: 20, type: 'normal'
+                    });
+                }
+            },
+            
+            setupControls: function() {
+                // Keyboard
+                window.addEventListener('keydown', (e) => {
+                    if (e.key === 'ArrowLeft') this.keys.left = true;
+                    if (e.key === 'ArrowRight') this.keys.right = true;
+                });
+                window.addEventListener('keyup', (e) => {
+                    if (e.key === 'ArrowLeft') this.keys.left = false;
+                    if (e.key === 'ArrowRight') this.keys.right = false;
+                });
+                
+                // Touch UI
+                const btnLeft = document.getElementById('btnLeft');
+                const btnRight = document.getElementById('btnRight');
+                
+                const handleTouch = (btn, isDown) => {
+                    if(btn === 'left') this.keys.left = isDown;
+                    if(btn === 'right') this.keys.right = isDown;
+                };
+                
+                // Support both touch and mouse for testing
+                btnLeft.addEventListener('touchstart', (e) => { e.preventDefault(); handleTouch('left', true); });
+                btnLeft.addEventListener('touchend', (e) => { e.preventDefault(); handleTouch('left', false); });
+                btnRight.addEventListener('touchstart', (e) => { e.preventDefault(); handleTouch('right', true); });
+                btnRight.addEventListener('touchend', (e) => { e.preventDefault(); handleTouch('right', false); });
+                
+                btnLeft.addEventListener('mousedown', () => handleTouch('left', true));
+                btnLeft.addEventListener('mouseup', () => handleTouch('left', false));
+                btnRight.addEventListener('mousedown', () => handleTouch('right', true));
+                btnRight.addEventListener('mouseup', () => handleTouch('right', false));
+            },
+            
+            // --- STREAMING_CHUNK:Game Logic - Physics, Generation, and Questions... ---
+            generateQuestion: function() {
+                // Pick random vocab
+                const q = vocabData[Math.floor(Math.random() * vocabData.length)];
+                this.currentQuestion = q;
+                
+                // Show question UI
+                const qBox = document.getElementById('questionBox');
+                document.getElementById('gameQuestionText').innerHTML = `${q.a}<br><span class="text-xl text-gray-600">(${q.l})</span>`;
+                qBox.style.display = 'block';
+                
+                // Generate Question Platforms above current highest platform
+                let highestY = Math.min(...this.platforms.map(p => p.y));
+                if (highestY > this.height) highestY = this.height; // Fallback
+                
+                const targetY = highestY - 200;
+                
+                // Shuffle options
+                const opts = [...q.options].sort(() => Math.random() - 0.5);
+                this.questionPlatforms = [];
+                
+                const pWidth = 120;
+                const spacing = (this.width - (opts.length * pWidth)) / (opts.length + 1);
+                
+                opts.forEach((opt, index) => {
+                    this.questionPlatforms.push({
+                        x: spacing + (index * (pWidth + spacing)),
+                        y: targetY,
+                        width: pWidth,
+                        height: 40,
+                        text: opt,
+                        isCorrect: opt === q.i,
+                        type: 'question'
+                    });
+                });
+                
+                // Add them to main platforms
+                this.platforms = this.platforms.concat(this.questionPlatforms);
+            },
+            
+            handleAnswer: function(platform) {
+                if (this.state !== 'playing') return;
+                
+                document.getElementById('questionBox').style.display = 'none';
+                
+                if (platform.isCorrect) {
+                    // Correct!
+                    this.score += 5;
+                    document.getElementById('score1').innerText = this.score;
+                    audioSys.playEffect('coin');
+                    
+                    // Bounce player high
+                    this.player.vy = this.player.jumpPower * 1.5;
+                    
+                    // Remove old normal platforms below to simulate moving up
+                    this.platforms = this.platforms.filter(p => p.y < platform.y + 100);
+                    
+                    // Generate new normal platforms above
+                    for(let i=1; i<3; i++) {
+                        this.platforms.push({
+                            x: Math.random() * (this.width - 100),
+                            y: platform.y - (i * 150),
+                            width: 100, height: 20, type: 'normal'
+                        });
+                    }
+                    
+                    // Generate next question
+                    setTimeout(() => this.generateQuestion(), 1000);
+                    
+                } else {
+                    // Wrong!
+                    this.state = 'falling';
+                    this.player.emoji = "😵";
+                    audioSys.playEffect('splash');
+                    this.createRainEffect();
+                    
+                    // Game over sequence
+                    setTimeout(() => {
+                        this.endGame();
+                    }, 2000);
+                }
+            },
+            
+            createRainEffect: function() {
+                const container = document.getElementById('rainContainer');
+                for(let i=0; i<50; i++) {
+                    const drop = document.createElement('div');
+                    drop.className = 'rain-drop';
+                    drop.style.left = Math.random() * 100 + '%';
+                    drop.style.animation = `rainFall ${0.5 + Math.random()*0.5}s linear forwards`;
+                    drop.style.animationDelay = `${Math.random() * 0.5}s`;
+                    container.appendChild(drop);
+                }
+                // Ripple effect on canvas handled in render
+            },
+            
+            endGame: function() {
+                cancelAnimationFrame(this.loopId);
+                document.getElementById('finalScore').innerText = this.score;
+                app.showScreen('screenResult');
+                document.getElementById('rainContainer').innerHTML = ''; // Clear rain
+                document.getElementById('questionBox').style.display = 'none';
+            },
+            
+            update: function() {
+                if (this.state === 'falling') {
+                    this.player.vy += 0.5; // Gravity
+                    this.player.y += this.player.vy;
+                    return; // Stop other logic
+                }
+                
+                // Movement
+                if (this.keys.left) this.player.vx = -this.player.speed;
+                else if (this.keys.right) this.player.vx = this.player.speed;
+                else this.player.vx = 0;
+                
+                // Apply physics
+                this.player.x += this.player.vx;
+                this.player.vy += 0.4; // Gravity
+                this.player.y += this.player.vy;
+                
+                // Screen boundaries (wrap around x)
+                if (this.player.x > this.width) this.player.x = 0;
+                if (this.player.x < 0) this.player.x = this.width;
+                
+                this.player.isGrounded = false;
+                
+                // Collision with platforms
+                // Only check collision when falling downwards
+                if (this.player.vy > 0) {
+                    for (let p of this.platforms) {
+                        // Check if player bottom passes platform top
+                        if (this.player.y + this.player.height >= p.y &&
+                            this.player.y + this.player.height <= p.y + this.player.vy + 2 && // Small buffer
+                            this.player.x + this.player.width > p.x &&
+                            this.player.x < p.x + p.width) {
+                                
+                                this.player.y = p.y - this.player.height;
+                                this.player.vy = this.player.jumpPower; // Auto jump
+                                this.player.isGrounded = true;
+                                audioSys.playEffect('jump');
+                                
+                                // Check if it's a question platform
+                                if (p.type === 'question') {
+                                    this.handleAnswer(p);
+                                }
+                        }
+                    }
+                }
+                
+                // Camera Follow
+                // If player goes above middle of screen, move camera (and objects) down
+                const scrollThreshold = this.height / 2;
+                if (this.player.y < scrollThreshold) {
+                    const diff = scrollThreshold - this.player.y;
+                    this.player.y = scrollThreshold;
+                    
+                    // Move all platforms down
+                    this.platforms.forEach(p => p.y += diff);
+                    
+                    // Remove platforms that went off bottom
+                    this.platforms = this.platforms.filter(p => p.y < this.height + 100);
+                }
+                
+                // Fall off bottom check (Game over condition if miss platforms)
+                if (this.player.y > this.height) {
+                     this.state = 'falling';
+                     this.player.emoji = "😭";
+                     audioSys.playEffect('splash');
+                     setTimeout(() => this.endGame(), 1000);
+                }
+            },
+            
+            // --- STREAMING_CHUNK:Game Engine Rendering... ---
+            draw: function() {
+                // Clear canvas
+                this.ctx.clearRect(0, 0, this.width, this.height);
+                
+                // Draw Platforms
+                this.platforms.forEach(p => {
+                    if (p.type === 'ground') {
+                        this.ctx.fillStyle = '#8BC34A'; // Grass
+                        this.ctx.fillRect(p.x, p.y, p.width, p.height);
+                    } else if (p.type === 'normal') {
+                        // Cloud-like platforms
+                        this.ctx.fillStyle = '#FFFFFF';
+                        this.ctx.beginPath();
+                        this.ctx.roundRect(p.x, p.y, p.width, p.height, 10);
+                        this.ctx.fill();
+                        this.ctx.strokeStyle = '#B0BEC5';
+                        this.ctx.stroke();
+                    } else if (p.type === 'question') {
+                        // Mystery block style
+                        this.ctx.fillStyle = '#FFC107'; // Yellow
+                        this.ctx.beginPath();
+                        this.ctx.roundRect(p.x, p.y, p.width, p.height, 5);
+                        this.ctx.fill();
+                        
+                        this.ctx.strokeStyle = '#FF9800';
+                        this.ctx.lineWidth = 3;
+                        this.ctx.stroke();
+                        
+                        // Text inside block
+                        this.ctx.fillStyle = '#000';
+                        this.ctx.font = '14px "Fredoka One"';
+                        this.ctx.textAlign = 'center';
+                        this.ctx.textBaseline = 'middle';
+                        
+                        // Truncate text if too long
+                        let displayTxt = p.text;
+                        if(displayTxt.length > 12) displayTxt = displayTxt.substring(0,10) + '..';
+                        
+                        this.ctx.fillText(displayTxt, p.x + p.width/2, p.y + p.height/2);
+                    }
+                });
+                
+                // Draw Player (Using Emoji for simplicity and cute look)
+                this.ctx.font = '40px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'bottom';
+                
+                // Flip horizontally if moving left
+                this.ctx.save();
+                if (this.keys.left) {
+                    this.ctx.translate(this.player.x + this.player.width/2, this.player.y + this.player.height);
+                    this.ctx.scale(-1, 1);
+                    this.ctx.fillText(this.player.emoji, 0, 0);
+                } else {
+                     this.ctx.fillText(this.player.emoji, this.player.x + this.player.width/2, this.player.y + this.player.height);
+                }
+                this.ctx.restore();
+                
+                // Draw ripples if falling
+                if (this.state === 'falling') {
+                    this.ctx.beginPath();
+                    this.ctx.arc(this.player.x + this.player.width/2, this.height - 20, 20 + (this.player.y * 0.1), 0, Math.PI * 2);
+                    this.ctx.strokeStyle = `rgba(255,255,255, ${Math.max(0, 1 - (this.player.y/this.height))})`;
+                    this.ctx.lineWidth = 2;
+                    this.ctx.stroke();
+                }
+            },
+            
+            gameLoop: function() {
+                this.update();
+                this.draw();
+                if(this.state !== 'result') {
+                    this.loopId = requestAnimationFrame(() => this.gameLoop());
+                }
+            }
+        };
+
+        // --- STREAMING_CHUNK:Bootstrapping application... ---
+        window.onload = function() {
+            app.init();
+        };
+
+    </script>
+</body>
+</html>
